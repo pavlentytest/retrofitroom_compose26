@@ -35,7 +35,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.example.myapplication.domain.model.Post
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,76 +52,43 @@ fun PostListScreen() {
         PostListViewModel(useCase)
     }
 
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val pagingItems: LazyPagingItems<Post> = viewModel.postsPagingFlow.collectAsLazyPagingItems()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Posts") },
-                actions = {
-                    IconButton(onClick = { viewModel.refreshPosts() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Обновить"
-                        )
-                    }
-                }
-            )
-        }
+        topBar = { TopAppBar(title = { Text("Posts & Paging 3") }) }
     ) { padding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+            contentPadding = PaddingValues(8.dp)
         ) {
-            when (state) {
-                is PostUiState.Loading -> {
+            items(
+                count = pagingItems.itemCount,
+                key = { pagingItems.peek(it)?.id ?: it }
+            ) { index ->
+                pagingItems[index]?.let { post ->
+                    PostItem(post = post)
+                }
+            }
+
+            if (pagingItems.loadState.append is LoadState.Loading) {
+                item {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
                 }
+            }
 
-                is PostUiState.Success -> {
-                    val posts = (state as PostUiState.Success).posts
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(8.dp)
-                    ) {
-                        items(
-                            items = posts,
-                            key = { it.id }
-                        ) { post ->
-                            PostItem(post = post)
-                        }
-                    }
-                }
-
-                is PostUiState.Error -> {
-                    ErrorContent(
-                        message = (state as PostUiState.Error).message,
-                        onRetry = { viewModel.refreshPosts() }
-                    )
-                }
-
-                is PostUiState.Empty -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Список постов пуст",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.refreshPosts() }) {
-                                Text("Загрузить данные")
-                            }
-                        }
+            if (pagingItems.loadState.append is LoadState.Error) {
+                item {
+                    Button(onClick = { pagingItems.retry() }) {
+                        Text("Повторить загрузку")
                     }
                 }
             }

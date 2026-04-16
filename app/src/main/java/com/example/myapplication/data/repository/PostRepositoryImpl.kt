@@ -2,7 +2,13 @@ package com.example.myapplication.data.repository
 
 import android.content.Context
 import android.util.Log
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import com.example.myapplication.data.local.PostDatabase
+import com.example.myapplication.data.local.PostRemoteMediator
 import com.example.myapplication.data.local.toDomain
 import com.example.myapplication.data.local.toEntity
 import com.example.myapplication.data.remote.RetrofitClient
@@ -13,20 +19,30 @@ import kotlinx.coroutines.flow.map
 
 class PostRepositoryImpl(context: Context) : PostRepository {
 
-    private val dao = PostDatabase.getDatabase(context).postDao()
+    private val database = PostDatabase.getDatabase(context)
+    private val dao = database.postDao()
     private val api = RetrofitClient.apiService
 
-    override fun getPostsFlow(): Flow<List<Post>> {
-        return dao.getAllPosts().map { entities ->
-            entities.map { it.toDomain() }
-        }
+    @OptIn(ExperimentalPagingApi::class)
+    override fun getPostsPaged(): Flow<PagingData<Post>> {
+        return Pager(
+            PagingConfig(
+                pageSize = 20,
+                initialLoadSize = 20,
+                prefetchDistance = 1,
+                enablePlaceholders = false
+            ),
+            remoteMediator = PostRemoteMediator(api, database),
+            pagingSourceFactory = { dao.getPostsPaged() }
+        ).flow
+            .map { pagingData ->
+                pagingData.map { it.toDomain() }
+            }
     }
 
     override suspend fun refreshPosts(): Result<Unit> = runCatching {
-        val response = api.getPosts()
-        val freshPosts = response.posts
+        val response = api.getPostsPaged(limit = 50, skip = 0)
         dao.clearAll()
-        dao.insertPosts(freshPosts.map { it.toEntity() })
+        dao.insertPosts(response.posts.map { it.toEntity() })
     }
-
 }

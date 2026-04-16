@@ -73,4 +73,10 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     implementation("androidx.compose.material:material-icons-extended:1.7.0")
+
+    implementation("androidx.paging:paging-runtime-ktx:3.3.2")
+    implementation("androidx.paging:paging-compose:3.3.2")
+
+// Важно! Эта зависимость часто решает проблему с LimitOffsetPagingSource
+    implementation("androidx.room:room-paging:2.8.4")
 }

@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 import android.content.Context
 
 @Database(
-    entities = [PostEntity::class],
+    entities = [PostEntity::class, PostRemoteKey::class],
     version = 1,
     exportSchema = false
 )
@@ -14,6 +14,7 @@ abstract class PostDatabase : RoomDatabase() {
 
     abstract fun postDao(): PostDao
 
+    abstract fun remoteKeyDao(): RemoteKeyDao
     companion object {
         @Volatile
         private var INSTANCE: PostDatabase? = null
